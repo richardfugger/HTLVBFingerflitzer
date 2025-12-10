@@ -21,7 +21,7 @@ name: Publish HTLVBFingerflitzer web app
 
 env:
   AZURE_WEBAPP_NAME: wa-fingerflitzer-cloudcomputing242501    # set this to the name of your Azure Web App
-  AZURE_WEBAPP_PACKAGE_PATH: 'C:\Users\R.Fugger\OneDrive - HTL Vöcklabruck\CS\EGGJ\5\Schreibtrainer\Fingerflitzer'      # set this to the path to your web app project, defaults to the repository root
+  AZURE_WEBAPP_PACKAGE_PATH: 'C:\Users\R.Fugger\OneDrive - HTL VÃ¶cklabruck\CS\EGGJ\5\Schreibtrainer\Fingerflitzer'      # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '8'                 # set this to the .NET Core version to use
 
 on:
@@ -89,5 +89,6 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: staging
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
