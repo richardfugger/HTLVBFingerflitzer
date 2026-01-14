@@ -1,8 +1,10 @@
 az login
 gh auth login
 
-$UserName = ((az ad signed-in-user show | ConvertFrom-Json).userPrincipalName -replace '@.*$','' -replace '\W','').ToLower()
-az group create --name rg-fingerflitzer --location swedencentral |Out-Null
+$UserName = ((az ad signed-in-user show | ConvertFrom-Json).userPrincipalName -replace '@.*$', '' -replace '\W', '').ToLower()
+$GitHubRespositoryName = "richardfugger/HTLVBFingerflitzer"
+
+az group create --name rg-fingerflitzer --location swedencentral | Out-Null
 
 az appservice plan create `
   --name asp-fingerflitzer `
@@ -19,18 +21,16 @@ az webapp create `
   --plan asp-fingerflitzer `
   --resource-group rg-fingerflitzer | Out-Null
 
-  $SubscriptionId = (az account show | ConvertFrom-Json).id
-  $ServicePricipalSecret = az ad sp create-for-rbac `
-    --name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
-    --role contributor `
-    --scopes /subscriptions/$SubscriptionId/resourceGroups/rg-fingerflitzer/providers/Microsoft.Web/sites/wa-fingerflitzer-$UserName `
-    --json-auth
+$SubscriptionId = (az account show | ConvertFrom-Json).id
+$ServicePricipalSecret = az ad sp create-for-rbac `
+  --name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
+  --role contributor `
+  --scopes /subscriptions/$SubscriptionId/resourceGroups/rg-fingerflitzer/providers/Microsoft.Web/sites/wa-fingerflitzer-$UserName `
+  --json-auth
 
 
-
-gh secret set AZURE_CREDENTIALS `
-  --repo richardfugger/HTLVBFingerflitzer `
-  --body "$ServicePricipalSecret"
+$ServicePricipalSecret | gh secret set AZURE_CREDENTIALS `
+  --repo $GitHubRespositoryName
 
 az webapp deployment slot create `
   --slot staging `
@@ -38,14 +38,15 @@ az webapp deployment slot create `
   --resource-group rg-fingerflitzer
 
 
-  az webapp config appsettings set `
-    --settings "DailyChallenge__Type=static-text" "DailyChallenge__StaticText=Hi from Azure Web App!" `
-    --slot staging `
-    --name wa-fingerflitzer-$UserName `
-    --resource-group rg-fingerflitzer
+az webapp config appsettings set `
+  --settings "DailyChallenge__Type=static-text" "DailyChallenge__StaticText=Hi from Azure Web App!" `
+  --slot staging `
+  --name wa-fingerflitzer-$UserName `
+  --resource-group rg-fingerflitzer
 
 
-
+gh workflow run publish-fingerflitzer-web-app.yml `
+  --repo GitHubRespositoryName
 
 # Allow access from web app to database
 # see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
@@ -73,12 +74,19 @@ az webapp deployment slot create `
 $WebApp = az webapp show `
   --name wa-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer | ConvertFrom-Json
+
+
+$WebAppStagingSlot = az webapp deployment slot list `
+  --resource-group rg-fingerflitzer `
+  --name wa-fingerflitzer-$UserName `
+  --query defaultHostName 
+
 Write-Host "### Web app: https://$($WebApp.defaultHostName)"
+#Write-Host "### Web app: https://$($WebApp.defaultHostName)"
 
 
-<#
 az group delete --name rg-fingerflitzer --no-wait
 $ServicePrinciple = az ad sp list --display-name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" | ConvertFrom-Json
 az ad sp delete --id $ServicePrinciple.id
-#>
+
 
