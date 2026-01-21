@@ -2,9 +2,9 @@ az login
 gh auth login
 
 $UserName = ((az ad signed-in-user show | ConvertFrom-Json).userPrincipalName -replace '@.*$', '' -replace '\W', '').ToLower()
-$GitHubRespositoryName = "richardfugger/HTLVBFingerflitzer"
+$GitHubRepositoryName = "richardfugger/HTLVBFingerflitzer"
 
-az group create --name rg-fingerflitzer --location swedencentral | Out-Null
+az group create --name rg-fingerflitzer --location norwayeast | Out-Null
 
 az appservice plan create `
   --name asp-fingerflitzer `
@@ -22,21 +22,19 @@ az webapp create `
   --resource-group rg-fingerflitzer | Out-Null
 
 $SubscriptionId = (az account show | ConvertFrom-Json).id
-$ServicePricipalSecret = az ad sp create-for-rbac `
+$ServicePrincipalSecret = az ad sp create-for-rbac `
   --name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
   --role contributor `
   --scopes /subscriptions/$SubscriptionId/resourceGroups/rg-fingerflitzer/providers/Microsoft.Web/sites/wa-fingerflitzer-$UserName `
   --json-auth
 
-
-$ServicePricipalSecret | gh secret set AZURE_CREDENTIALS `
-  --repo $GitHubRespositoryName
+$ServicePrincipalSecret | gh secret set AZURE_CREDENTIALS `
+  --repo $GitHubRepositoryName
 
 az webapp deployment slot create `
   --slot staging `
   --name wa-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer
-
 
 az webapp config appsettings set `
   --settings "DailyChallenge__Type=static-text" "DailyChallenge__StaticText=Hi from Azure Web App!" `
@@ -44,20 +42,19 @@ az webapp config appsettings set `
   --name wa-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer
 
-
 gh workflow run publish-fingerflitzer-web-app.yml `
-  --repo GitHubRespositoryName
+  --repo $GitHubRepositoryName
 
-# Allow access from web app to database
-# see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
+# # Allow access from web app to database
+# # see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
 # az extension add --name serviceconnector-passwordless --upgrade
 # az webapp connection create postgres-flexible `
-#   --connection fingerflitzer_webapp `
-#   --resource-group rg-fingerflitzer `
-#   --name wa-fingerflitzer-$UserName `
-#   --target-resource-group rg-fingerflitzer `
-#   --server db-fingerflitzer-$UserName `
-#   --database fingerflitzer `
+#   --connection beer4me_webapp `
+#   --resource-group rg-beer4me `
+#   --name wa-beer4me-$UserName `
+#   --target-resource-group rg-beer4me `
+#   --server db-beer4me-$UserName `
+#   --database beer4me `
 #   --system-identity `
 #   --client-type dotnet | Out-Null
 
@@ -65,28 +62,57 @@ gh workflow run publish-fingerflitzer-web-app.yml `
 # $User = az ad signed-in-user show | ConvertFrom-Json
 # $AccessToken = az account get-access-token --resource-type oss-rdbms | ConvertFrom-Json
 # az postgres flexible-server execute `
-#   --querytext "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO `"aad_fingerflitzer_webapp`";GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO `"aad_fingerflitzer_webapp`";" `
-#   --database-name fingerflitzer `
+#   --querytext "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO `"aad_beer4me_webapp`";GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO `"aad_beer4me_webapp`";" `
+#   --database-name beer4me `
 #   --admin-user $User.userPrincipalName `
 #   --admin-password $AccessToken.accessToken `
-#   --name db-fingerflitzer-$UserName
+#   --name db-beer4me-$UserName
 
 $WebApp = az webapp show `
   --name wa-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer | ConvertFrom-Json
-
-
 $WebAppStagingSlot = az webapp deployment slot list `
   --resource-group rg-fingerflitzer `
   --name wa-fingerflitzer-$UserName `
-  --query defaultHostName 
+  --query "[?name=='staging']" | ConvertFrom-Json
+
+$ReplyUrls = @(
+  "https://localhost/signin-oidc"
+  "https://$($WebApp.defaultHostName)/signin-oidc"
+  "https://$($WebAppStagingSlot.defaultHostName)/signin-oidc"
+)
+$AppRegistration = az ad app create --display-name Fingerflitzer-$UserName `
+  --web-redirect-uris $ReplyUrls | ConvertFrom-Json
+
+$AppSecret = az ad app credential reset --id $AppRegistration.id `
+  --display-name Dev `
+  --append | ConvertFrom-Json
+
+az webapp config appsettings set `
+  --settings "AzureAd__ClientId=$($AppRegistration.appId)" "AzureAd__ClientSecret=$($AppSecret.password)" `
+  --slot staging `
+  --name wa-fingerflitzer-$UserName `
+  --resource-group rg-fingerflitzer
+    
+az webapp config appsettings set `
+  --settings "AzureAd__ClientId=$($AppRegistration.appId)" "AzureAd__ClientSecret=$($AppSecret.password)" `
+  --name wa-fingerflitzer-$UserName `
+  --resource-group rg-fingerflitzer
+
+dotnet user-secrets --project .\HTLVBFingerflitzer.Web\ set AzureAd:ClientSecret $($AppSecret.password)
 
 Write-Host "### Web app: https://$($WebApp.defaultHostName)"
-#Write-Host "### Web app: https://$($WebApp.defaultHostName)"
+Write-Host "### Web app staging slot: https://$($WebAppStagingSlot.defaultHostName)"
 
+Write-Host "### App registration:"
+Write-Host "* Client id: $($AppSecret.appId)"
+Write-Host "* Tenant id: $($AppSecret.tenant)"
+Write-Host "* Client secret: $($AppSecret.password)"
 
+<#
 az group delete --name rg-fingerflitzer --no-wait
-$ServicePrinciple = az ad sp list --display-name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" | ConvertFrom-Json
-az ad sp delete --id $ServicePrinciple.id
-
+$ServicePrincipal = az ad sp list --display-name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
+  | ConvertFrom-Json
+az ad sp delete --id $ServicePrincipal.id
+#>
 
