@@ -45,28 +45,32 @@ az webapp config appsettings set `
 gh workflow run publish-fingerflitzer-web-app.yml `
   --repo $GitHubRepositoryName
 
-# # Allow access from web app to database
-# # see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
-# az extension add --name serviceconnector-passwordless --upgrade
-# az webapp connection create postgres-flexible `
-#   --connection beer4me_webapp `
-#   --resource-group rg-beer4me `
-#   --name wa-beer4me-$UserName `
-#   --target-resource-group rg-beer4me `
-#   --server db-beer4me-$UserName `
-#   --database beer4me `
-#   --system-identity `
-#   --client-type dotnet | Out-Null
+# Allow access from web app to database
+# see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
+az extension add --name serviceconnector-passwordless --upgrade
+foreach($Slot in "production", "staging")
+{
+  az webapp connection create postgres-flexible `
+    --connection fingerflitzer_webapp_to_db `
+    --resource-group rg-fingerflitzer `
+    --name wa-fingerflitzer-$UserName `
+    --slot $Slot `
+    --target-resource-group rg-fingerflitzer `
+    --server db-fingerflitzer-$UserName `
+    --database fingerflitzer `
+    --system-identity `
+    --client-type dotnet | Out-Null
+}
 
 # az extension add --name rdbms-connect
 # $User = az ad signed-in-user show | ConvertFrom-Json
 # $AccessToken = az account get-access-token --resource-type oss-rdbms | ConvertFrom-Json
 # az postgres flexible-server execute `
-#   --querytext "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO `"aad_beer4me_webapp`";GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO `"aad_beer4me_webapp`";" `
-#   --database-name beer4me `
+#   --querytext "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO `"aad_fingerflitzer_webapp_to_db`";GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO `"aad_fingerflitzer_webapp_to_db`";" `
+#   --database-name fingerflitzer `
 #   --admin-user $User.userPrincipalName `
 #   --admin-password $AccessToken.accessToken `
-#   --name db-beer4me-$UserName
+#   --name db-fingerflitzer-$UserName
 
 $WebApp = az webapp show `
   --name wa-fingerflitzer-$UserName `
