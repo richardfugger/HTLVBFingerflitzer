@@ -1,6 +1,6 @@
 CREATE TABLE challenges (
     id BIGSERIAL PRIMARY KEY,
-    challenge_date DATE NOT NULL,
+    challenge_date DATE UNIQUE NOT NULL,
     text TEXT NOT NULL
 );
 

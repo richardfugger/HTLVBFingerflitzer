@@ -9,6 +9,8 @@ builder.Services.AddMicrosoftIdentityWebAppAuthentication(builder.Configuration)
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddSingleton(TimeProvider.System);
+
 IConfigurationSection dailyChallengeSection =
     builder.Configuration.GetSection("DailyChallenge");
 string? dailyChallengeTextGeneratorType =
@@ -28,6 +30,20 @@ else if (dailyChallengeTextGeneratorType == "rotating-text")
             dailyChallengeSection.GetSection("TextsToRotate").Get<string[]>() ?? ["7"]
         )
     );
+}
+
+else if (dailyChallengeTextGeneratorType == "db-text")
+{
+    builder.Services.AddSingleton<IDailyChallengeTextGenerator>(sp =>
+    new PostgreSQLDailyChallengeTextGenerator(
+        new PostgreSQLConnectionFactory(
+            "Server=db-fingerflitzer-cloudcomputing242501.postgres.database.azure.com;Database=fingerflitzer;Port=5432;User Id=CloudComputing2425-01@htlvb.at;Ssl Mode=Require;"
+        ),
+        sp.GetRequiredService<TimeProvider>()
+    )
+);
+
+    // builder.Services.AddSingleton<IDailyChallengeTextGenerator, PostgreSQLDailyChallengeTextGenerator>();
 }
 
 var app = builder.Build();

@@ -1,9 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197 d17.13
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTLVBFingerflitzer.Web", "HTLVBFingerflitzer.Web\HTLVBFingerflitzer.Web.csproj", "{D26730E7-7C9B-4F34-B6EE-D4E4A9114524}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTLVBFingerflitzer.AITextGenerationSample2", "HTLVBFingerflitzer.AITextGenerationSample2\HTLVBFingerflitzer.AITextGenerationSample2.csproj", "{A3BCFEE3-C613-43CC-9325-4AAD0DAF9ED8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTLVBFingerflitzer.AIGenerationSample", "HTLVBFingerflitzer.AIGenerationSample\HTLVBFingerflitzer.AIGenerationSample.csproj", "{AF4D76D4-D9F3-46B0-9C8E-DB58DD6316B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTLVBFingerflitzer.TextGenerationFunc", "HTLVBFingerflitzer.TextGenerationFunc\HTLVBFingerflitzer.TextGenerationFunc.csproj", "{129D4355-9A51-406D-A8D4-5075EB3318D0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +21,18 @@ Global
 		{D26730E7-7C9B-4F34-B6EE-D4E4A9114524}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D26730E7-7C9B-4F34-B6EE-D4E4A9114524}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D26730E7-7C9B-4F34-B6EE-D4E4A9114524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3BCFEE3-C613-43CC-9325-4AAD0DAF9ED8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3BCFEE3-C613-43CC-9325-4AAD0DAF9ED8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3BCFEE3-C613-43CC-9325-4AAD0DAF9ED8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3BCFEE3-C613-43CC-9325-4AAD0DAF9ED8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF4D76D4-D9F3-46B0-9C8E-DB58DD6316B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF4D76D4-D9F3-46B0-9C8E-DB58DD6316B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF4D76D4-D9F3-46B0-9C8E-DB58DD6316B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF4D76D4-D9F3-46B0-9C8E-DB58DD6316B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{129D4355-9A51-406D-A8D4-5075EB3318D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{129D4355-9A51-406D-A8D4-5075EB3318D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{129D4355-9A51-406D-A8D4-5075EB3318D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{129D4355-9A51-406D-A8D4-5075EB3318D0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

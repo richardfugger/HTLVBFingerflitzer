@@ -1,21 +1,31 @@
 $env:PYTHONPATH = "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2"
 
 $UserName = ((az ad signed-in-user show | ConvertFrom-Json).userPrincipalName -replace '@.*$','' -replace '\W','').ToLower()
-$Location = (az policy assignment list --query "[?name == 'sys.regionrestriction'].parameters.listOfAllowedLocations.value" | ConvertFrom-Json)[0]
+
+$AllowedLocations = az policy assignment list --query "[?name == 'sys.regionrestriction'].parameters.listOfAllowedLocations.value[]" | ConvertFrom-Json
+$Location =
+    @("norwayeast", "polandcentral", "swedencentral", "francecentral") `
+    | Where-Object { $AllowedLocations.Count -eq 0 -or $AllowedLocations -contains $_ } `
+    | Select-Object -First 1
+
+if (-not $Location) {
+    throw "No allowed location found."
+}
 
 az group create --name rg-fingerflitzer --location $Location | Out-Null
 # az postgres flexible-server list-skus --location $Location
 az postgres flexible-server create `
   --name db-fingerflitzer-$UserName `
   --microsoft-entra-auth Enabled `
-  --create-default-database Disabled `
-  --database-name fingerflitzer `
-  --location $Location `
   --password-auth Disabled `
   --public-access 0.0.0.0 `
   --sku-name Standard_B1ms `
   --storage-size 32 `
   --tier Burstable `
+  --resource-group rg-fingerflitzer | Out-Null
+az postgres flexible-server db create `
+  --database-name fingerflitzer `
+  --server-name db-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer | Out-Null
 
 # Zugriff von aktueller IP auf DB erlauben
@@ -50,3 +60,10 @@ az postgres flexible-server execute `
   --admin-user $User.userPrincipalName `
   --admin-password $AccessToken.accessToken `
   --name db-fingerflitzer-$UserName
+
+$ConnectionString = az postgres flexible-server show-connection-string `
+  --server db-fingerflitzer-$UserName `
+  --database-name fingerflitzer `
+  --query 'connectionStrings.\"ado.net\"' `
+  --output tsv
+Write-Host "Connection string: $ConnectionString"

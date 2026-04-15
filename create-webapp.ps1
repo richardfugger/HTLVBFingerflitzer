@@ -4,7 +4,7 @@ gh auth login
 $UserName = ((az ad signed-in-user show | ConvertFrom-Json).userPrincipalName -replace '@.*$', '' -replace '\W', '').ToLower()
 $GitHubRepositoryName = "richardfugger/HTLVBFingerflitzer"
 $Location = (az policy assignment list --query "[?name == 'sys.regionrestriction'].parameters.listOfAllowedLocations.value" | ConvertFrom-Json)[0]
-
+$Location = "norwayeast"
 az group create --name rg-fingerflitzer --location $Location | Out-Null
 
 az appservice plan create `
@@ -26,10 +26,10 @@ $SubscriptionId = (az account show | ConvertFrom-Json).id
 $ServicePrincipalSecret = az ad sp create-for-rbac `
   --name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
   --role contributor `
-  --scopes /subscriptions/$SubscriptionId/resourceGroups/rg-fingerflitzer/providers/Microsoft.Web/sites/wa-fingerflitzer-$UserName `
+  --scopes "/subscriptions/$SubscriptionId/resourceGroups/rg-fingerflitzer/providers/Microsoft.Web/sites/wa-fingerflitzer-$UserName" `
   --json-auth
 
-$ServicePrincipalSecret | gh secret set AZURE_CREDENTIALS `
+"$ServicePrincipalSecret" | gh secret set AZURE_CREDENTIALS `
   --repo $GitHubRepositoryName
 
 az webapp deployment slot create `
@@ -38,7 +38,7 @@ az webapp deployment slot create `
   --resource-group rg-fingerflitzer
 
 az webapp config appsettings set `
-  --settings "DailyChallenge__Type=static-text" "DailyChallenge__StaticText=Hi from Azure Web App!" `
+  --settings "DailyChallenge__Type=db-text" "DailyChallenge__ConnectionString=Server=db-fingerflitzer-$UserName.postgres.database.azure.com;Database=fingerflitzer;Port=5432;User Id=aad_fingerflitzer_webapp_to_db;Ssl Mode=Require;" `
   --slot staging `
   --name wa-fingerflitzer-$UserName `
   --resource-group rg-fingerflitzer
@@ -49,29 +49,25 @@ gh workflow run publish-fingerflitzer-web-app.yml `
 # Allow access from web app to database
 # see https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database
 az extension add --name serviceconnector-passwordless --upgrade
-foreach($Slot in "production", "staging")
-{
-  az webapp connection create postgres-flexible `
-    --connection fingerflitzer_webapp_to_db `
-    --resource-group rg-fingerflitzer `
-    --name wa-fingerflitzer-$UserName `
-    --slot $Slot `
-    --target-resource-group rg-fingerflitzer `
-    --server db-fingerflitzer-$UserName `
-    --database fingerflitzer `
-    --system-identity `
-    --client-type dotnet | Out-Null
-}
-
-# az extension add --name rdbms-connect
-# $User = az ad signed-in-user show | ConvertFrom-Json
-# $AccessToken = az account get-access-token --resource-type oss-rdbms | ConvertFrom-Json
-# az postgres flexible-server execute `
-#   --querytext "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO `"aad_fingerflitzer_webapp_to_db`";GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO `"aad_fingerflitzer_webapp_to_db`";" `
-#   --database-name fingerflitzer `
-#   --admin-user $User.userPrincipalName `
-#   --admin-password $AccessToken.accessToken `
-#   --name db-fingerflitzer-$UserName
+az webapp connection create postgres-flexible `
+  --connection fingerflitzer_webapp_to_db `
+  --resource-group rg-fingerflitzer `
+  --name wa-fingerflitzer-$UserName `
+  --target-resource-group rg-fingerflitzer `
+  --server db-fingerflitzer-$UserName `
+  --database fingerflitzer `
+  --system-identity `
+  --client-type dotnet | Out-Null
+az webapp connection create postgres-flexible `
+  --connection fingerflitzer_webapp_to_db `
+  --resource-group rg-fingerflitzer `
+  --name wa-fingerflitzer-$UserName `
+  --slot "staging" `
+  --target-resource-group rg-fingerflitzer `
+  --server db-fingerflitzer-$UserName `
+  --database fingerflitzer `
+  --system-identity `
+  --client-type dotnet | Out-Null
 
 $WebApp = az webapp show `
   --name wa-fingerflitzer-$UserName `
@@ -114,10 +110,10 @@ Write-Host "* Client id: $($AppSecret.appId)"
 Write-Host "* Tenant id: $($AppSecret.tenant)"
 Write-Host "* Client secret: $($AppSecret.password)"
 
-<#
+
 az group delete --name rg-fingerflitzer --no-wait
 $ServicePrincipal = az ad sp list --display-name "gh-action-to-deploy-fingerflitzer-webapp-$UserName" `
   | ConvertFrom-Json
 az ad sp delete --id $ServicePrincipal.id
-#>
+
 
